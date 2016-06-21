@@ -144,6 +144,7 @@ struct FileOperations
     int (*ftruncate)(FsContext *, int, V9fsFidOpenState *, off_t);
     int (*futimens)(FsContext *, int, V9fsFidOpenState *,
                     const struct timespec *);
+    int (*fchown)(FsContext *, int, V9fsFidOpenState *, FsCred *);
     void *opaque;
 };
 
