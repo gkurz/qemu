@@ -26,7 +26,23 @@ ssize_t proxy_unmarshal(struct iovec *in_sg, size_t offset, const char *fmt,
 
     va_start(ap, fmt);
     for (i = 0; fmt[i]; i++) {
-        copied = v9fs_iov_vunmarshal_one(in_sg, 1, &offset, 0, fmt[i], &ap);
+        if (fmt[i] == 's') {
+            V9fsString *str = va_arg(ap, V9fsString *);
+
+            copied = v9fs_iov_unmarshal(in_sg, 1, offset, 0, "w", &str->size);
+            if (copied > 0) {
+                offset += copied;
+                str->data = g_malloc(str->size + 1);
+                copied = v9fs_unpack(str->data, in_sg, 1, offset, str->size);
+                if (copied > 0) {
+                    str->data[str->size] = 0;
+                } else {
+                    v9fs_string_free(str);
+                }
+            }
+        } else {
+            copied = v9fs_iov_vunmarshal_one(in_sg, 1, &offset, 0, fmt[i], &ap);
+        }
         if (copied < 0) {
             break;
         }
@@ -46,7 +62,17 @@ ssize_t proxy_marshal(struct iovec *out_sg, size_t offset, const char *fmt, ...)
 
     va_start(ap, fmt);
     for (i = 0; fmt[i]; i++) {
-        copied = v9fs_iov_vmarshal_one(out_sg, 1, &offset, 0, fmt[i], &ap);
+        if (fmt[i] == 's') {
+            V9fsString *str = va_arg(ap, V9fsString *);
+
+            copied = v9fs_iov_marshal(out_sg, 1, offset, 0, "w", str->size);
+            if (copied > 0) {
+                offset += copied;
+                copied = v9fs_pack(out_sg, 1, offset, str->data, str->size);
+            }
+        } else {
+            copied = v9fs_iov_vmarshal_one(out_sg, 1, &offset, 0, fmt[i], &ap);
+        }
         if (copied < 0) {
             break;
         }

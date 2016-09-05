@@ -57,8 +57,8 @@ static ssize_t v9fs_packunpack(void *addr, struct iovec *sg, int sg_count,
     return copied;
 }
 
-static ssize_t v9fs_unpack(void *dst, struct iovec *out_sg, int out_num,
-                           size_t offset, size_t size)
+ssize_t v9fs_unpack(void *dst, struct iovec *out_sg, int out_num, size_t offset,
+                    size_t size)
 {
     return v9fs_packunpack(dst, out_sg, out_num, offset, size, 0);
 }
@@ -125,7 +125,12 @@ ssize_t v9fs_iov_vunmarshal_one(struct iovec *out_sg, int out_num,
                                  str->size);
             if (copied > 0) {
                 str->data[str->size] = 0;
-            } else {
+                    /* 9P forbids NUL characters in all text strings */
+                    if (strlen(str->data) != str->size) {
+                        copied = -EINVAL;
+                    }
+            }
+            if (copied <= 0) {
                 v9fs_string_free(str);
             }
         }
@@ -209,6 +214,8 @@ ssize_t v9fs_iov_vmarshal_one(struct iovec *in_sg, int in_num, size_t *offset,
     }
     case 's': {
         V9fsString *str = va_arg(*ap, V9fsString *);
+        /* 9P forbids NUL characters in all text strings */
+        g_assert(strlen(str->data) == str->size);
         copied = v9fs_iov_marshal(in_sg, in_num, *offset, bswap,
                                   "w", str->size);
         if (copied > 0) {

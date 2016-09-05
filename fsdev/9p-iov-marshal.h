@@ -4,6 +4,8 @@
 #include "9p-marshal.h"
 
 
+ssize_t v9fs_unpack(void *dst, struct iovec *out_sg, int out_num, size_t offset,
+                    size_t size);
 ssize_t v9fs_pack(struct iovec *in_sg, int in_num, size_t offset,
                   const void *src, size_t size);
 ssize_t v9fs_iov_unmarshal(struct iovec *out_sg, int out_num, size_t offset,
