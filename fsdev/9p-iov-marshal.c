@@ -69,6 +69,98 @@ ssize_t v9fs_pack(struct iovec *in_sg, int in_num, size_t offset,
     return v9fs_packunpack((void *)src, in_sg, in_num, offset, size, 1);
 }
 
+ssize_t v9fs_iov_vmarshal_one(struct iovec *in_sg, int in_num, size_t *offset,
+                              int bswap, char fmt, va_list *ap)
+{
+    ssize_t copied = 0;
+
+    switch (fmt) {
+    case 'b': {
+        uint8_t val = va_arg(*ap, int);
+        copied = v9fs_pack(in_sg, in_num, *offset, &val, sizeof(val));
+        break;
+    }
+    case 'w': {
+        uint16_t val = va_arg(*ap, int);
+        if (bswap) {
+            val = cpu_to_le16(val);
+        }
+        copied = v9fs_pack(in_sg, in_num, *offset, &val, sizeof(val));
+        break;
+    }
+    case 'd': {
+        uint32_t val = va_arg(*ap, uint32_t);
+        if (bswap) {
+            val = cpu_to_le32(val);
+        }
+        copied = v9fs_pack(in_sg, in_num, *offset, &val, sizeof(val));
+        break;
+    }
+    case 'q': {
+        uint64_t val = va_arg(*ap, uint64_t);
+        if (bswap) {
+            val = cpu_to_le64(val);
+        }
+        copied = v9fs_pack(in_sg, in_num, *offset, &val, sizeof(val));
+        break;
+    }
+    case 's': {
+        V9fsString *str = va_arg(*ap, V9fsString *);
+        copied = v9fs_iov_marshal(in_sg, in_num, *offset, bswap,
+                                  "w", str->size);
+        if (copied > 0) {
+            *offset += copied;
+            copied = v9fs_pack(in_sg, in_num, *offset, str->data, str->size);
+        }
+        break;
+    }
+    case 'Q': {
+        V9fsQID *qidp = va_arg(*ap, V9fsQID *);
+        copied = v9fs_iov_marshal(in_sg, in_num, *offset, bswap, "bdq",
+                                  qidp->type, qidp->version,
+                                  qidp->path);
+        break;
+    }
+    case 'S': {
+        V9fsStat *statp = va_arg(*ap, V9fsStat *);
+        copied = v9fs_iov_marshal(in_sg, in_num, *offset, bswap,
+                                  "wwdQdddqsssssddd",
+                                  statp->size, statp->type, statp->dev,
+                                  &statp->qid, statp->mode, statp->atime,
+                                  statp->mtime, statp->length,
+                                  &statp->name,
+                                  &statp->uid, &statp->gid, &statp->muid,
+                                  &statp->extension, statp->n_uid,
+                                  statp->n_gid, statp->n_muid);
+        break;
+    }
+    case 'A': {
+        V9fsStatDotl *statp = va_arg(*ap, V9fsStatDotl *);
+        copied = v9fs_iov_marshal(in_sg, in_num, *offset, bswap,
+                                  "qQdddqqqqqqqqqqqqqqq",
+                                  statp->st_result_mask,
+                                  &statp->qid, statp->st_mode,
+                                  statp->st_uid, statp->st_gid,
+                                  statp->st_nlink, statp->st_rdev,
+                                  statp->st_size, statp->st_blksize,
+                                  statp->st_blocks, statp->st_atime_sec,
+                                  statp->st_atime_nsec,
+                                  statp->st_mtime_sec,
+                                  statp->st_mtime_nsec,
+                                  statp->st_ctime_sec,
+                                  statp->st_ctime_nsec,
+                                  statp->st_btime_sec,
+                                  statp->st_btime_nsec, statp->st_gen,
+                                  statp->st_data_version);
+        break;
+    }
+    default:
+        break;
+    }
+
+    return copied;
+}
+
 ssize_t v9fs_iov_vunmarshal(struct iovec *out_sg, int out_num, size_t offset,
                             int bswap, const char *fmt, va_list ap)
 {
@@ -196,98 +288,21 @@ ssize_t v9fs_iov_vmarshal(struct iovec *in_sg, int in_num, size_t offset,
                           int bswap, const char *fmt, va_list ap)
 {
     int i;
-    ssize_t copied = 0;
     size_t old_offset = offset;
+    va_list aq;
 
+    va_copy(aq, ap);
     for (i = 0; fmt[i]; i++) {
-        switch (fmt[i]) {
-        case 'b': {
-            uint8_t val = va_arg(ap, int);
-            copied = v9fs_pack(in_sg, in_num, offset, &val, sizeof(val));
-            break;
-        }
-        case 'w': {
-            uint16_t val = va_arg(ap, int);
-            if (bswap) {
-                val = cpu_to_le16(val);
-            }
-            copied = v9fs_pack(in_sg, in_num, offset, &val, sizeof(val));
-            break;
-        }
-        case 'd': {
-            uint32_t val = va_arg(ap, uint32_t);
-            if (bswap) {
-                val = cpu_to_le32(val);
-            }
-            copied = v9fs_pack(in_sg, in_num, offset, &val, sizeof(val));
-            break;
-        }
-        case 'q': {
-            uint64_t val = va_arg(ap, uint64_t);
-            if (bswap) {
-                val = cpu_to_le64(val);
-            }
-            copied = v9fs_pack(in_sg, in_num, offset, &val, sizeof(val));
-            break;
-        }
-        case 's': {
-            V9fsString *str = va_arg(ap, V9fsString *);
-            copied = v9fs_iov_marshal(in_sg, in_num, offset, bswap,
-                                      "w", str->size);
-            if (copied > 0) {
-                offset += copied;
-                copied = v9fs_pack(in_sg, in_num, offset, str->data, str->size);
-            }
-            break;
-        }
-        case 'Q': {
-            V9fsQID *qidp = va_arg(ap, V9fsQID *);
-            copied = v9fs_iov_marshal(in_sg, in_num, offset, bswap, "bdq",
-                                      qidp->type, qidp->version,
-                                      qidp->path);
-            break;
-        }
-        case 'S': {
-            V9fsStat *statp = va_arg(ap, V9fsStat *);
-            copied = v9fs_iov_marshal(in_sg, in_num, offset, bswap,
-                                      "wwdQdddqsssssddd",
-                                      statp->size, statp->type, statp->dev,
-                                      &statp->qid, statp->mode, statp->atime,
-                                      statp->mtime, statp->length,
-                                      &statp->name,
-                                      &statp->uid, &statp->gid, &statp->muid,
-                                      &statp->extension, statp->n_uid,
-                                      statp->n_gid, statp->n_muid);
-            break;
-        }
-        case 'A': {
-            V9fsStatDotl *statp = va_arg(ap, V9fsStatDotl *);
-            copied = v9fs_iov_marshal(in_sg, in_num, offset, bswap,
-                                      "qQdddqqqqqqqqqqqqqqq",
-                                      statp->st_result_mask,
-                                      &statp->qid, statp->st_mode,
-                                      statp->st_uid, statp->st_gid,
-                                      statp->st_nlink, statp->st_rdev,
-                                      statp->st_size, statp->st_blksize,
-                                      statp->st_blocks, statp->st_atime_sec,
-                                      statp->st_atime_nsec,
-                                      statp->st_mtime_sec,
-                                      statp->st_mtime_nsec,
-                                      statp->st_ctime_sec,
-                                      statp->st_ctime_nsec,
-                                      statp->st_btime_sec,
-                                      statp->st_btime_nsec, statp->st_gen,
-                                      statp->st_data_version);
-            break;
-        }
-        default:
-            break;
-        }
+        ssize_t copied;
+
+        copied = v9fs_iov_vmarshal_one(in_sg, in_num, &offset, bswap, fmt[i],
+                                       &aq);
         if (copied < 0) {
             return copied;
         }
         offset += copied;
     }
+    va_end(aq);
 
     return offset - old_offset;
 }
