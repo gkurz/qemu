@@ -17,6 +17,7 @@
 #include "qemu/error-report.h"
 #include "fsdev/qemu-fsdev.h"
 #include "9p-proxy.h"
+#include "fsdev/proxy-marshal.h"
 
 typedef struct V9fsProxy {
     int sockfd;
