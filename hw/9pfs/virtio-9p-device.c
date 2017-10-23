@@ -229,6 +229,17 @@ static const VMStateDescription vmstate_virtio_9p = {
     },
 };
 
+static const VMStateDescription vmstate_virtio_9p_device = {
+    .name = "virtio-9p-device",
+    .minimum_version_id = 1,
+    .version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_STRUCT(state, V9fsVirtioState, 1, vmstate_9pfs_device,
+                       V9fsState),
+        VMSTATE_END_OF_LIST()
+    },
+};
+
 static Property virtio_9p_properties[] = {
     DEFINE_PROP_STRING("mount_tag", V9fsVirtioState, state.fsconf.tag),
     DEFINE_PROP_STRING("fsdev", V9fsVirtioState, state.fsconf.fsdev_id),
@@ -248,6 +259,7 @@ static void virtio_9p_class_init(ObjectClass *klass, void *data)
     vdc->get_features = virtio_9p_get_features;
     vdc->get_config = virtio_9p_get_config;
     vdc->reset = virtio_9p_reset;
+    vdc->vmsd = &vmstate_virtio_9p_device;
 }
 
 static const TypeInfo virtio_device_info = {

@@ -3661,6 +3661,103 @@ void v9fs_device_unrealize_common(V9fsState *s, Error **errp)
     g_free(s->ctx.fs_root);
 }
 
+static int v9fs_fid_post_load(void *opaque, int version_id)
+{
+    V9fsFidState *fid = opaque;
+
+    /* If it's a file fid mark the file descriptors as closed.
+     * When doing get_fid v9fs_reopen_fid will reopen the file or the directory
+     */
+    if (fid->fid_type == P9_FID_FILE) {
+        fid->fs.fd = -1;
+    } else {
+        fid->fs.dir.stream = NULL;
+    }
+
+    return 0;
+}
+
+static bool v9fs_fid_is_xattr(void *opaque, int version_id)
+{
+    V9fsFidState *fid = opaque;
+
+    return fid->fid_type == P9_FID_XATTR;
+}
+
+static const VMStateDescription vmstate_9pfs_fid = {
+    .name = "9pfs-device-fid",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .post_load = v9fs_fid_post_load,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(fid_type, V9fsFidState),
+        VMSTATE_UINT32(fid, V9fsFidState),
+        VMSTATE_UINT32(flags, V9fsFidState),
+        VMSTATE_UINT32(open_flags, V9fsFidState),
+        VMSTATE_UINT32(uid, V9fsFidState),
+        VMSTATE_UINT32(ref, V9fsFidState),
+        VMSTATE_BOOL(clunked, V9fsFidState),
+
+        /* V9fsFidState::path */
+        VMSTATE_UINT16(path.size, V9fsFidState),
+        VMSTATE_VBUFFER_ALLOC_UINT16(path.data, V9fsFidState, 1, NULL,
+                                     path.size),
+
+        /* V9fsFidState::xattr */
+        VMSTATE_UINT32_TEST(fs.xattr.copied_len, V9fsFidState,
+                            v9fs_fid_is_xattr),
+        VMSTATE_UINT32_TEST(fs.xattr.flags, V9fsFidState, v9fs_fid_is_xattr),
+
+        /* V9fsFidState::xattr.name */
+        VMSTATE_UINT16_TEST(fs.xattr.name.size, V9fsFidState,
+                            v9fs_fid_is_xattr),
+        VMSTATE_VBUFFER_ALLOC_UINT16(fs.xattr.name.data, V9fsFidState, 1,
+                                     v9fs_fid_is_xattr, fs.xattr.name.size),
+
+        /* V9fsFidState::xattr.value */
+        VMSTATE_UINT32_TEST(fs.xattr.len, V9fsFidState, v9fs_fid_is_xattr),
+        VMSTATE_VBUFFER_ALLOC_UINT32(fs.xattr.value, V9fsFidState, 1,
+                                     v9fs_fid_is_xattr, fs.xattr.len),
+        VMSTATE_END_OF_LIST()
+    },
+};
+
+static int v9fs_pre_save(void *opaque)
+{
+    V9fsState *s = opaque;
+    V9fsFidState *fid;
+
+    /* Close all fids and mark them for reopen if migration fail */
+    QLIST_FOREACH(fid, &s->fid_list, next) {
+        /* Non-reclaimable fids are supposed to block migration */
+        g_assert(!(fid->flags & FID_NON_RECLAIMABLE));
+
+        if (fid->fid_type == P9_FID_FILE) {
+            s->ops->close(&s->ctx, &fid->fs);
+            fid->fs.fd = -1;
+        } else if (fid->fid_type == P9_FID_DIR) {
+            s->ops->closedir(&s->ctx, &fid->fs);
+            fid->fs.dir.stream = NULL;
+        }
+    }
+
+    return 0;
+}
+
+const VMStateDescription vmstate_9pfs_device = {
+    .name = "9pfs-device",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .pre_save = v9fs_pre_save,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(proto_version, V9fsState),
+        VMSTATE_INT32(msize, V9fsState),
+        VMSTATE_QLIST_V(fid_list, V9fsState, 1, vmstate_9pfs_fid, V9fsFidState,
+                        next),
+        VMSTATE_END_OF_LIST()
+    },
+};
+
 typedef struct VirtfsCoResetData {
     V9fsPDU pdu;
     bool done;

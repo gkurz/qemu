@@ -8,6 +8,7 @@
 #include "fsdev/9p-iov-marshal.h"
 #include "qemu/thread.h"
 #include "qemu/coroutine.h"
+#include "migration/vmstate.h"
 
 enum {
     P9_TLERROR = 6,
@@ -367,5 +368,7 @@ struct V9fsTransport {
                                          unsigned int *pniov, size_t size);
     void        (*push_and_notify)(V9fsPDU *pdu);
 };
+
+extern const VMStateDescription vmstate_9pfs_device;
 
 #endif
