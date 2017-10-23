@@ -252,7 +252,6 @@ struct V9fsState
      * on rename.
      */
     CoRwlock rename_lock;
-    int32_t root_fid;
     Error *migration_blocker;
     uint32_t migration_blocker_ref;
     V9fsConf fsconf;

@@ -387,21 +387,6 @@ static int coroutine_fn put_fid(V9fsPDU *pdu, V9fsFidState *fidp)
      * Don't free the fid if it is in reclaim list
      */
     if (!fidp->ref && fidp->clunked) {
-        if (fidp->fid == pdu->s->root_fid) {
-            /*
-             * if the clunked fid is root fid then we
-             * have unmounted the fs on the client side.
-             * delete the migration blocker. Ideally, this
-             * should be hooked to transport close notification
-             */
-            if (pdu->s->migration_blocker) {
-                g_assert(pdu->s->migration_blocker_ref == 1);
-                migrate_del_blocker(pdu->s->migration_blocker);
-                error_free(pdu->s->migration_blocker);
-                pdu->s->migration_blocker = NULL;
-                pdu->s->migration_blocker_ref--;
-            }
-        }
         return free_fid(pdu, fidp);
     }
     return 0;
@@ -1024,7 +1009,6 @@ static void coroutine_fn v9fs_attach(void *opaque)
     size_t offset = 7;
     V9fsQID qid;
     ssize_t err;
-    Error *local_err = NULL;
 
     v9fs_string_init(&uname);
     v9fs_string_init(&aname);
@@ -1052,27 +1036,6 @@ static void coroutine_fn v9fs_attach(void *opaque)
         err = -EINVAL;
         clunk_fid(s, fid);
         goto out;
-    }
-
-    /*
-     * disable migration if we haven't done already.
-     * attach could get called multiple times for the same export.
-     */
-    if (!s->migration_blocker) {
-        g_assert(!s->migration_blocker_ref);
-        error_setg(&s->migration_blocker,
-                   "Migration is disabled when VirtFS export path '%s' is mounted in the guest using mount_tag '%s'",
-                   s->ctx.fs_root ? s->ctx.fs_root : "NULL", s->tag);
-        err = migrate_add_blocker(s->migration_blocker, &local_err);
-        if (local_err) {
-            error_free(local_err);
-            error_free(s->migration_blocker);
-            s->migration_blocker = NULL;
-            clunk_fid(s, fid);
-            goto out;
-        }
-        s->root_fid = fid;
-        s->migration_blocker_ref++;
     }
 
     err = pdu_marshal(pdu, offset, "Q", &qid);
@@ -3545,7 +3508,6 @@ static bool op_can_block_migration(V9fsPDU *pdu)
     case P9_TLCREATE:
     case P9_TUNLINKAT:
     case P9_TREMOVE:
-    case P9_TATTACH:
         return true;
     default:
         return false;
