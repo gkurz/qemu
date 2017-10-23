@@ -236,6 +236,7 @@ struct V9fsFidState
 struct V9fsState
 {
     QLIST_HEAD(, V9fsPDU) free_list;
+    QLIST_HEAD(, V9fsPDU) delayed_list;
     QLIST_HEAD(, V9fsPDU) active_list;
     QLIST_HEAD(, V9fsFidState) fid_list;
     FileOperations *ops;

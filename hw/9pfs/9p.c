@@ -25,6 +25,7 @@
 #include "trace.h"
 #include "migration/blocker.h"
 #include "sysemu/qtest.h"
+#include "migration/misc.h"
 
 int open_fd_hw;
 int total_open_fd;
@@ -2441,23 +2442,35 @@ static void coroutine_fn v9fs_flush(void *opaque)
 
     if (pdu->tag == tag) {
         warn_report("the guest sent a self-referencing 9P flush request");
-    } else {
-        QLIST_FOREACH(cancel_pdu, &s->active_list, next) {
-            if (cancel_pdu->tag == tag) {
-                break;
+        goto out;
+    }
+
+    QLIST_FOREACH(cancel_pdu, &s->active_list, next) {
+        if (cancel_pdu->tag == tag) {
+            cancel_pdu->cancelled = 1;
+            /*
+             * Wait for pdu to complete.
+             */
+            qemu_co_queue_wait(&cancel_pdu->complete, NULL);
+            if (!qemu_co_queue_next(&cancel_pdu->complete)) {
+                cancel_pdu->cancelled = 0;
+                pdu_free(cancel_pdu);
             }
+            goto out;
         }
     }
-    if (cancel_pdu) {
-        cancel_pdu->cancelled = 1;
-        /*
-         * Wait for pdu to complete.
-         */
-        qemu_co_queue_wait(&cancel_pdu->complete, NULL);
-        if (!qemu_co_queue_next(&cancel_pdu->complete)) {
-            cancel_pdu->cancelled = 0;
-            pdu_free(cancel_pdu);
+
+    QLIST_FOREACH(cancel_pdu, &s->delayed_list, next) {
+        /* This pdu wasn't queued, just free it. */
+        if (cancel_pdu->tag == tag) {
+            s->transport->unpop(pdu);
+            goto out;
         }
+    }
+
+out:
+    if (cancel_pdu) {
+        pdu_free(cancel_pdu);
     }
     pdu_complete(pdu, 7);
 }
@@ -3523,6 +3536,22 @@ static inline bool is_read_only_op(V9fsPDU *pdu)
     }
 }
 
+static bool op_can_block_migration(V9fsPDU *pdu)
+{
+    switch (pdu->id) {
+    case P9_TLOPEN:
+    case P9_TOPEN:
+    case P9_TCREATE:
+    case P9_TLCREATE:
+    case P9_TUNLINKAT:
+    case P9_TREMOVE:
+    case P9_TATTACH:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void pdu_submit(V9fsPDU *pdu, P9MsgHeader *hdr)
 {
     Coroutine *co;
@@ -3542,13 +3571,25 @@ void pdu_submit(V9fsPDU *pdu, P9MsgHeader *hdr)
         handler = pdu_co_handlers[pdu->id];
     }
 
-    qemu_co_queue_init(&pdu->complete);
-    co = qemu_coroutine_create(handler, pdu);
-    qemu_coroutine_enter(co);
+    if (!migration_is_idle() && op_can_block_migration(pdu)) {
+        QLIST_REMOVE(pdu, next);
+        QLIST_INSERT_HEAD(&s->delayed_list, pdu, next);
+    } else {
+        qemu_co_queue_init(&pdu->complete);
+        co = qemu_coroutine_create(handler, pdu);
+        qemu_coroutine_enter(co);
+    }
 }
 
 static void v9fs_drain_all_pdus(V9fsState *s)
 {
+    V9fsPDU *pdu, *pdu_next;
+
+    QLIST_FOREACH_SAFE(pdu, &s->delayed_list, next, pdu_next) {
+        s->transport->unpop(pdu);
+        pdu_free(pdu);
+    }
+
     while (!QLIST_EMPTY(&s->active_list)) {
         aio_poll(qemu_get_aio_context(), true);
     }
@@ -3586,6 +3627,7 @@ int v9fs_device_realize_common(V9fsState *s, const V9fsTransport *t,
     /* initialize pdu allocator */
     QLIST_INIT(&s->free_list);
     QLIST_INIT(&s->active_list);
+    QLIST_INIT(&s->delayed_list);
     for (i = 0; i < MAX_REQ; i++) {
         QLIST_INSERT_HEAD(&s->free_list, &s->pdus[i], next);
         s->pdus[i].s = s;
