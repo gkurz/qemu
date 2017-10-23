@@ -35,6 +35,17 @@ static void virtio_9p_push_and_notify(V9fsPDU *pdu)
     virtio_notify(VIRTIO_DEVICE(v), v->vq);
 }
 
+static void virtio_9p_unpop(V9fsPDU *pdu)
+{
+    V9fsState *s = pdu->s;
+    V9fsVirtioState *v = container_of(s, V9fsVirtioState, state);
+    VirtQueueElement *elem = v->elems[pdu->idx];
+
+    virtqueue_unpop(v->vq, elem, pdu->size);
+    g_free(elem);
+    v->elems[pdu->idx] = NULL;
+}
+
 static void handle_9p_output(VirtIODevice *vdev, VirtQueue *vq)
 {
     V9fsVirtioState *v = (V9fsVirtioState *)vdev;
@@ -190,6 +201,7 @@ static const V9fsTransport virtio_9p_transport = {
     .init_in_iov_from_pdu = virtio_init_in_iov_from_pdu,
     .init_out_iov_from_pdu = virtio_init_out_iov_from_pdu,
     .push_and_notify = virtio_9p_push_and_notify,
+    .unpop = virtio_9p_unpop,
 };
 
 static void virtio_9p_device_realize(DeviceState *dev, Error **errp)
