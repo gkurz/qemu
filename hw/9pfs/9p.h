@@ -227,15 +227,15 @@ struct V9fsFidState
     uid_t uid;
     uint32_t ref;
     bool clunked;
-    V9fsFidState *next;
-    V9fsFidState *rclm_lst;
+    QLIST_ENTRY(V9fsFidState) next;
+    QLIST_ENTRY(V9fsFidState) reclaim_next;
 };
 
 struct V9fsState
 {
     QLIST_HEAD(, V9fsPDU) free_list;
     QLIST_HEAD(, V9fsPDU) active_list;
-    V9fsFidState *fid_list;
+    QLIST_HEAD(, V9fsFidState) fid_list;
     FileOperations *ops;
     FsContext ctx;
     char *tag;
