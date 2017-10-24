@@ -151,6 +151,14 @@ enum VMStateFlags {
      * VMStateField.size_offset (subject to VMS_MULTIPLY) to determine
      * the size of each (and every) entry. */
     VMS_VBUFFER_UINT32   = 0x8000,
+
+    /* The size of the individual entries (a single array entry if
+     * VMS_ARRAY or any of VMS_VARRAY* are set, or the field itself if
+     * neither is set) is variable (i.e. not known at compile-time),
+     * but the same for all entries. Use the uint16_t at opaque +
+     * VMStateField.size_offset (subject to VMS_MULTIPLY) to determine
+     * the size of each (and every) entry. */
+    VMS_VBUFFER_UINT16   = 0x10000,
 };
 
 typedef enum {
@@ -608,6 +616,17 @@ extern const VMStateInfo vmstate_info_qtailq;
     .info         = &vmstate_info_buffer,                            \
     .flags        = VMS_VBUFFER_UINT32 | VMS_POINTER,                \
     .offset       = offsetof(_state, _field),                        \
+}
+
+#define VMSTATE_VBUFFER_ALLOC_UINT16(_field, _state, _version,           \
+                                     _test, _field_size) {               \
+    .name         = (stringify(_field)),                                 \
+    .version_id   = (_version),                                          \
+    .field_exists = (_test),                                             \
+    .size_offset  = vmstate_offset_value(_state, _field_size, uint16_t), \
+    .info         = &vmstate_info_buffer,                                \
+    .flags        = VMS_VBUFFER_UINT16 | VMS_POINTER | VMS_ALLOC,        \
+    .offset       = offsetof(_state, _field),                            \
 }
 
 #define VMSTATE_VBUFFER_ALLOC_UINT32(_field, _state, _version,       \
