@@ -175,7 +175,7 @@ typedef struct V9fsXattr
     uint32_t len;
     void *value;
     V9fsString name;
-    int flags;
+    uint32_t flags;
     bool xattrwalk_fid;
 } V9fsXattr;
 
@@ -217,15 +217,15 @@ union V9fsFidOpenState {
 
 struct V9fsFidState
 {
-    int fid_type;
-    int32_t fid;
+    uint8_t fid_type;
+    uint32_t fid;
     V9fsPath path;
     V9fsFidOpenState fs;
     V9fsFidOpenState fs_reclaim;
-    int flags;
-    int open_flags;
+    uint32_t flags;
+    uint32_t open_flags;
     uid_t uid;
-    int ref;
+    uint32_t ref;
     bool clunked;
     V9fsFidState *next;
     V9fsFidState *rclm_lst;
@@ -239,7 +239,7 @@ struct V9fsState
     FileOperations *ops;
     FsContext ctx;
     char *tag;
-    P9ProtoVersion proto_version;
+    uint8_t proto_version;
     int32_t msize;
     V9fsPDU pdus[MAX_REQ];
     const V9fsTransport *transport;
