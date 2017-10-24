@@ -50,9 +50,9 @@ static int vmstate_n_elems(void *opaque, VMStateField *field)
     return n_elems;
 }
 
-static int vmstate_size(void *opaque, VMStateField *field)
+static size_t vmstate_size(void *opaque, VMStateField *field)
 {
-    int size = field->size;
+    size_t size = field->size;
 
     if (field->flags & VMS_VBUFFER) {
         size = *(int32_t *)(opaque+field->size_offset);
@@ -67,7 +67,7 @@ static int vmstate_size(void *opaque, VMStateField *field)
 static void vmstate_handle_alloc(void *ptr, VMStateField *field, void *opaque)
 {
     if (field->flags & VMS_POINTER && field->flags & VMS_ALLOC) {
-        gsize size = vmstate_size(opaque, field);
+        size_t size = vmstate_size(opaque, field);
         size *= vmstate_n_elems(opaque, field);
         if (size) {
             *(void **)ptr = g_malloc(size);
@@ -116,7 +116,7 @@ int vmstate_load_state(QEMUFile *f, const VMStateDescription *vmsd,
              field->version_id <= version_id)) {
             void *first_elem = opaque + field->offset;
             int i, n_elems = vmstate_n_elems(opaque, field);
-            int size = vmstate_size(opaque, field);
+            size_t size = vmstate_size(opaque, field);
 
             vmstate_handle_alloc(first_elem, field, opaque);
             if (field->flags & VMS_POINTER) {
@@ -336,7 +336,7 @@ int vmstate_save_state(QEMUFile *f, const VMStateDescription *vmsd,
             field->field_exists(opaque, vmsd->version_id)) {
             void *first_elem = opaque + field->offset;
             int i, n_elems = vmstate_n_elems(opaque, field);
-            int size = vmstate_size(opaque, field);
+            size_t size = vmstate_size(opaque, field);
             int64_t old_offset, written_bytes;
             QJSON *vmdesc_loop = vmdesc;
 
