@@ -61,6 +61,10 @@ get_qtailq(const char *name, int version_id) "%s v%d"
 get_qtailq_end(const char *name, const char *reason, int val) "%s %s/%d"
 put_qtailq(const char *name, int version_id) "%s v%d"
 put_qtailq_end(const char *name, const char *reason) "%s %s"
+get_qlist(const char *name, int version_id) "%s v%d"
+get_qlist_end(const char *name, const char *reason, int val) "%s %s/%d"
+put_qlist(const char *name, int version_id) "%s v%d"
+put_qlist_end(const char *name, const char *reason) "%s %s"
 
 # migration/qemu-file.c
 qemu_file_fclose(void) ""

@@ -163,6 +163,74 @@ struct {                                                                \
 #define QLIST_FIRST(head)                ((head)->lh_first)
 #define QLIST_NEXT(elm, field)           ((elm)->field.le_next)
 
+#define field_at_offset(base, offset, type)     \
+        ((type) (((char *) (base)) + (offset)))
+
+typedef struct DUMMY_L_ENTRY DUMMY_L_ENTRY;
+typedef struct DUMMY_L DUMMY_L;
+
+struct DUMMY_L_ENTRY {
+        QLIST_ENTRY(DUMMY_L_ENTRY) next;
+};
+
+struct DUMMY_L {
+        QLIST_HEAD(DUMMY_L_HEAD, DUMMY_L_ENTRY) head;
+};
+
+#define dummy_l ((DUMMY_L *) 0)
+#define dummy_le ((DUMMY_L_ENTRY *) 0)
+
+/*
+ * Offsets of layout of a list head.
+ */
+#define QLIST_FIRST_OFFSET (offsetof(typeof(dummy_l->head), lh_first))
+/*
+ * Raw access of elements of a list.
+ */
+#define QLIST_RAW_FIRST(head)                                   \
+        (*field_at_offset(head, QLIST_FIRST_OFFSET, void **))
+
+/*
+ * Offsets of layout of a list element.
+ */
+#define QLIST_NEXT_OFFSET (offsetof(typeof(dummy_le->next), le_next))
+#define QLIST_PREV_OFFSET (offsetof(typeof(dummy_le->next), le_prev))
+
+/*
+ * Raw access of elements of a list entry.
+ */
+#define QLIST_RAW_NEXT(elm, entry)                                      \
+        (*field_at_offset(elm, entry + QLIST_NEXT_OFFSET, void **))
+#define QLIST_RAW_LE_PREV(elm, entry)                                   \
+        (*field_at_offset(elm, entry + QLIST_PREV_OFFSET, void ***))
+/*
+ * List tranversal using pointer arithmetic.
+ */
+#define QLIST_RAW_FOREACH(elm, head, entry)                                   \
+        for ((elm) = QLIST_RAW_FIRST(head);                                   \
+             (elm);                                                           \
+             (elm) = QLIST_RAW_NEXT(elm, entry))
+/*
+ * List insertion using pointer arithmetic.
+ */
+#define QLIST_RAW_INSERT_HEAD(head, elm, entry) do {                        \
+        QLIST_RAW_NEXT(elm, entry) = QLIST_RAW_FIRST(head);                 \
+        if (QLIST_RAW_FIRST(head)) {                                        \
+            QLIST_RAW_LE_PREV(QLIST_RAW_FIRST(head), entry) = &(elm);       \
+        }                                                                   \
+        QLIST_RAW_LE_PREV(elm, entry) = (head);                             \
+        QLIST_RAW_FIRST(head) = (elm);                                      \
+} while (/*CONSTCOND*/0)
+
+#define QLIST_RAW_INSERT_AFTER(listelm, elm, entry) do {                 \
+        QLIST_RAW_NEXT(elm, entry) = QLIST_RAW_NEXT(listelm, entry);     \
+        if (QLIST_RAW_NEXT(listelm, entry)) {                            \
+            QLIST_RAW_LE_PREV(QLIST_RAW_NEXT(listelm, entry), entry) =   \
+                &QLIST_RAW_NEXT(elm, entry);                             \
+        }                                                                \
+        QLIST_RAW_NEXT(listelm, entry) = (elm);                          \
+        QLIST_RAW_LE_PREV(elm, entry) = &QLIST_RAW_NEXT(listelm, entry); \
+} while (/*CONSTCOND*/0)
 
 /*
  * Singly-linked List definitions.
@@ -442,9 +510,6 @@ struct {                                                                \
         (*(((struct headname *)((head)->tqh_last))->tqh_last))
 #define QTAILQ_PREV(elm, headname, field) \
         (*(((struct headname *)((elm)->field.tqe_prev))->tqh_last))
-
-#define field_at_offset(base, offset, type)                                    \
-        ((type) (((char *) (base)) + (offset)))
 
 typedef struct DUMMY_Q_ENTRY DUMMY_Q_ENTRY;
 typedef struct DUMMY_Q DUMMY_Q;
