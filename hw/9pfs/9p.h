@@ -9,6 +9,7 @@
 #include "qemu/thread.h"
 #include "qemu/coroutine.h"
 #include "migration/vmstate.h"
+#include "sysemu/sysemu.h"
 
 enum {
     P9_TLERROR = 6,
@@ -243,6 +244,7 @@ struct V9fsState
     uint8_t proto_version;
     int32_t msize;
     V9fsPDU pdus[MAX_REQ];
+    VMChangeStateEntry *vmstate;
     const V9fsTransport *transport;
     /*
      * lock ensuring atomic path update

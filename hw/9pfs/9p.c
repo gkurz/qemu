@@ -3547,6 +3547,29 @@ void pdu_submit(V9fsPDU *pdu, P9MsgHeader *hdr)
     qemu_coroutine_enter(co);
 }
 
+static void v9fs_drain_all_pdus(V9fsState *s)
+{
+    while (!QLIST_EMPTY(&s->active_list)) {
+        aio_poll(qemu_get_aio_context(), true);
+    }
+}
+
+static void v9fs_vm_change_state_handler(void *opaque, int running,
+                                         RunState state)
+{
+    V9fsState *s = opaque;
+
+    if (running) {
+        return;
+    }
+
+    if (state != RUN_STATE_FINISH_MIGRATE && state != RUN_STATE_SAVE_VM) {
+        return;
+    }
+
+    v9fs_drain_all_pdus(s);
+}
+
 /* Returns 0 on success, 1 on failure. */
 int v9fs_device_realize_common(V9fsState *s, const V9fsTransport *t,
                                Error **errp)
@@ -3638,6 +3661,9 @@ int v9fs_device_realize_common(V9fsState *s, const V9fsTransport *t,
 
     v9fs_path_free(&path);
 
+    s->vmstate =
+        qemu_add_vm_change_state_handler(v9fs_vm_change_state_handler, s);
+
     rc = 0;
 out:
     if (rc) {
@@ -3653,6 +3679,8 @@ out:
 
 void v9fs_device_unrealize_common(V9fsState *s, Error **errp)
 {
+    qemu_del_vm_change_state_handler(s->vmstate);
+
     if (s->ops->cleanup) {
         s->ops->cleanup(&s->ctx);
     }
@@ -3776,9 +3804,7 @@ void v9fs_reset(V9fsState *s)
     VirtfsCoResetData data = { .pdu = { .s = s }, .done = false };
     Coroutine *co;
 
-    while (!QLIST_EMPTY(&s->active_list)) {
-        aio_poll(qemu_get_aio_context(), true);
-    }
+    v9fs_drain_all_pdus(s);
 
     co = qemu_coroutine_create(virtfs_co_reset, &data);
     qemu_coroutine_enter(co);
