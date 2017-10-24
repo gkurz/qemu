@@ -56,14 +56,14 @@ enum VMStateFlags {
      * }). Dereference the pointer before using it as basis for
      * further pointer arithmetic (see e.g. VMS_ARRAY). Does not
      * affect the meaning of VMStateField.num_offset or
-     * VMStateField.size_offset; see VMS_VARRAY* and VMS_VBUFFER for
+     * VMStateField.size_offset; see VMS_VARRAY* and VMS_VBUFFER* for
      * those. */
     VMS_POINTER          = 0x002,
 
     /* The field is an array of fixed size. VMStateField.num contains
      * the number of entries in the array. The size of each entry is
      * given by VMStateField.size and / or opaque +
-     * VMStateField.size_offset; see VMS_VBUFFER and
+     * VMStateField.size_offset; see VMS_VBUFFER* and
      * VMS_MULTIPLY. Each array entry will be processed individually
      * (VMStateField.info.get()/put() if VMS_STRUCT is not set,
      * recursion into VMStateField.vmsd if VMS_STRUCT is set). May not
@@ -108,9 +108,9 @@ enum VMStateFlags {
     VMS_VBUFFER          = 0x100,
 
     /* Multiply the entry size given by the int32_t at opaque +
-     * VMStateField.size_offset (see VMS_VBUFFER description) with
+     * VMStateField.size_offset (see VMS_VBUFFER* description) with
      * VMStateField.size to determine the number of bytes to be
-     * allocated. Only valid in combination with VMS_VBUFFER. */
+     * allocated. Only valid in combination with VMS_VBUFFER*. */
     VMS_MULTIPLY         = 0x200,
 
     /* The field is an array of variable size. The uint8_t at opaque +
@@ -143,6 +143,14 @@ enum VMStateFlags {
      * to determine the number of entries in the array. Only valid in
      * combination with one of VMS_VARRAY*. */
     VMS_MULTIPLY_ELEMENTS = 0x4000,
+
+    /* The size of the individual entries (a single array entry if
+     * VMS_ARRAY or any of VMS_VARRAY* are set, or the field itself if
+     * neither is set) is variable (i.e. not known at compile-time),
+     * but the same for all entries. Use the uint32_t at opaque +
+     * VMStateField.size_offset (subject to VMS_MULTIPLY) to determine
+     * the size of each (and every) entry. */
+    VMS_VBUFFER_UINT32   = 0x8000,
 };
 
 typedef enum {
@@ -598,7 +606,7 @@ extern const VMStateInfo vmstate_info_qtailq;
     .field_exists = (_test),                                         \
     .size_offset  = vmstate_offset_value(_state, _field_size, uint32_t),\
     .info         = &vmstate_info_buffer,                            \
-    .flags        = VMS_VBUFFER|VMS_POINTER,                         \
+    .flags        = VMS_VBUFFER_UINT32 | VMS_POINTER,                \
     .offset       = offsetof(_state, _field),                        \
 }
 
@@ -609,7 +617,7 @@ extern const VMStateInfo vmstate_info_qtailq;
     .field_exists = (_test),                                         \
     .size_offset  = vmstate_offset_value(_state, _field_size, uint32_t),\
     .info         = &vmstate_info_buffer,                            \
-    .flags        = VMS_VBUFFER|VMS_POINTER|VMS_ALLOC,               \
+    .flags        = VMS_VBUFFER_UINT32 | VMS_POINTER | VMS_ALLOC,    \
     .offset       = offsetof(_state, _field),                        \
 }
 

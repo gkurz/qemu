@@ -56,9 +56,14 @@ static size_t vmstate_size(void *opaque, VMStateField *field)
 
     if (field->flags & VMS_VBUFFER) {
         size = *(int32_t *)(opaque+field->size_offset);
-        if (field->flags & VMS_MULTIPLY) {
-            size *= field->size;
-        }
+    } else if (field->flags & VMS_VBUFFER_UINT32) {
+        size = *(uint32_t *)(opaque + field->size_offset);
+    } else {
+        return size;
+    }
+
+    if (field->flags & VMS_MULTIPLY) {
+        size *= field->size;
     }
 
     return size;
