@@ -3246,6 +3246,7 @@ static void coroutine_fn v9fs_xattrwalk(void *opaque)
             clunk_fid(s, xattr_fidp->fid);
             goto out;
         }
+        g_assert(size <= XATTR_LIST_MAX);
         /*
          * Read the xattr value
          */
@@ -3279,6 +3280,7 @@ static void coroutine_fn v9fs_xattrwalk(void *opaque)
             clunk_fid(s, xattr_fidp->fid);
             goto out;
         }
+        g_assert(size <= XATTR_SIZE_MAX);
         /*
          * Read the xattr value
          */

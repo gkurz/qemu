@@ -171,8 +171,8 @@ typedef struct V9fsConf
 
 typedef struct V9fsXattr
 {
-    uint64_t copied_len;
-    uint64_t len;
+    uint32_t copied_len;
+    uint32_t len;
     void *value;
     V9fsString name;
     int flags;
