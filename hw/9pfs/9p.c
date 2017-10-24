@@ -350,6 +350,7 @@ free_value:
 
 static int coroutine_fn free_fid(V9fsPDU *pdu, V9fsFidState *fidp)
 {
+    V9fsState *s = pdu->s;
     int retval = 0;
 
     if (fidp->fid_type == P9_FID_FILE) {
@@ -365,6 +366,14 @@ static int coroutine_fn free_fid(V9fsPDU *pdu, V9fsFidState *fidp)
         retval = v9fs_xattr_fid_clunk(pdu, fidp);
     }
     v9fs_path_free(&fidp->path);
+    if (fidp->flags & FID_NON_RECLAIMABLE) {
+        g_assert(s->migration_blocker_ref);
+        if (!--s->migration_blocker_ref) {
+            migrate_del_blocker(s->migration_blocker);
+            error_free(s->migration_blocker);
+            s->migration_blocker = NULL;
+        }
+    }
     g_free(fidp);
     return retval;
 }
@@ -385,9 +394,11 @@ static int coroutine_fn put_fid(V9fsPDU *pdu, V9fsFidState *fidp)
              * should be hooked to transport close notification
              */
             if (pdu->s->migration_blocker) {
+                g_assert(pdu->s->migration_blocker_ref == 1);
                 migrate_del_blocker(pdu->s->migration_blocker);
                 error_free(pdu->s->migration_blocker);
                 pdu->s->migration_blocker = NULL;
+                pdu->s->migration_blocker_ref--;
             }
         }
         return free_fid(pdu, fidp);
@@ -489,6 +500,30 @@ void coroutine_fn v9fs_reclaim_fd(V9fsPDU *pdu)
     }
 }
 
+static int v9fs_mark_fid_unreclaim(V9fsState *s, V9fsFidState *fidp)
+{
+    int err;
+    Error *local_err = NULL;
+
+    if (!s->migration_blocker) {
+        g_assert(!s->migration_blocker_ref);
+        error_setg(&s->migration_blocker,
+                   "Migration is disabled. VirtFS has an open fd to an unlinked file");
+        err = migrate_add_blocker(s->migration_blocker, &local_err);
+        if (local_err) {
+            error_report_err(local_err);
+            error_free(s->migration_blocker);
+            s->migration_blocker = NULL;
+            return err;
+        }
+    }
+
+    s->migration_blocker_ref++;
+    fidp->flags |= FID_NON_RECLAIMABLE;
+
+    return 0;
+}
+
 static int coroutine_fn v9fs_mark_fids_unreclaim(V9fsPDU *pdu, V9fsPath *path)
 {
     int err;
@@ -502,7 +537,10 @@ again:
         }
         if (!memcmp(fidp->path.data, path->data, path->size)) {
             /* Mark the fid non reclaimable. */
-            fidp->flags |= FID_NON_RECLAIMABLE;
+            err = v9fs_mark_fid_unreclaim(s, fidp);
+            if (err < 0) {
+                return err;
+            }
 
             /* reopen the file/dir if already closed */
             err = v9fs_reopen_fid(pdu, fidp);
@@ -1020,6 +1058,7 @@ static void coroutine_fn v9fs_attach(void *opaque)
      * attach could get called multiple times for the same export.
      */
     if (!s->migration_blocker) {
+        g_assert(!s->migration_blocker_ref);
         error_setg(&s->migration_blocker,
                    "Migration is disabled when VirtFS export path '%s' is mounted in the guest using mount_tag '%s'",
                    s->ctx.fs_root ? s->ctx.fs_root : "NULL", s->tag);
@@ -1032,6 +1071,7 @@ static void coroutine_fn v9fs_attach(void *opaque)
             goto out;
         }
         s->root_fid = fid;
+        s->migration_blocker_ref++;
     }
 
     err = pdu_marshal(pdu, offset, "Q", &qid);
@@ -1506,7 +1546,10 @@ static void coroutine_fn v9fs_open(void *opaque)
              * We let the host file system do O_EXCL check
              * We should not reclaim such fd
              */
-            fidp->flags |= FID_NON_RECLAIMABLE;
+            err = v9fs_mark_fid_unreclaim(s, fidp);
+            if (err < 0) {
+                goto out;
+            }
         }
         iounit = get_iounit(pdu, &fidp->path);
         err = pdu_marshal(pdu, offset, "Qd", &qid, iounit);
@@ -1577,7 +1620,10 @@ static void coroutine_fn v9fs_lcreate(void *opaque)
          * We let the host file system do O_EXCL check
          * We should not reclaim such fd
          */
-        fidp->flags |= FID_NON_RECLAIMABLE;
+        err = v9fs_mark_fid_unreclaim(pdu->s, fidp);
+        if (err < 0) {
+            goto out;
+        }
     }
     iounit =  get_iounit(pdu, &fidp->path);
     stat_to_qid(&stbuf, &qid);
@@ -2297,7 +2343,10 @@ static void coroutine_fn v9fs_create(void *opaque)
              * We let the host file system do O_EXCL check
              * We should not reclaim such fd
              */
-            fidp->flags |= FID_NON_RECLAIMABLE;
+            err = v9fs_mark_fid_unreclaim(pdu->s, fidp);
+            if (err < 0) {
+                goto out;
+            }
         }
     }
     iounit = get_iounit(pdu, &fidp->path);

@@ -250,6 +250,7 @@ struct V9fsState
     CoRwlock rename_lock;
     int32_t root_fid;
     Error *migration_blocker;
+    uint32_t migration_blocker_ref;
     V9fsConf fsconf;
     V9fsQID root_qid;
 };
