@@ -80,12 +80,13 @@ static uint64_t acpi_memory_hotplug_read(void *opaque, hwaddr addr,
     o = OBJECT(mdev->dimm);
     switch (addr) {
     case 0x0: /* Lo part of phys address where DIMM is mapped */
-        val = o ? object_property_get_uint(o, PC_DIMM_ADDR_PROP, NULL) : 0;
+        val = o ?
+            object_property_get_uint(o, PC_DIMM_ADDR_PROP, &error_abort) : 0;
         trace_mhp_acpi_read_addr_lo(mem_st->selector, val);
         break;
     case 0x4: /* Hi part of phys address where DIMM is mapped */
-        val =
-            o ? object_property_get_uint(o, PC_DIMM_ADDR_PROP, NULL) >> 32 : 0;
+        val = o ?
+         object_property_get_uint(o, PC_DIMM_ADDR_PROP, &error_abort) >> 32 : 0;
         trace_mhp_acpi_read_addr_hi(mem_st->selector, val);
         break;
     case 0x8: /* Lo part of DIMM size */
@@ -98,7 +99,8 @@ static uint64_t acpi_memory_hotplug_read(void *opaque, hwaddr addr,
         trace_mhp_acpi_read_size_hi(mem_st->selector, val);
         break;
     case 0x10: /* node proximity for _PXM method */
-        val = o ? object_property_get_uint(o, PC_DIMM_NODE_PROP, NULL) : 0;
+        val = o ?
+            object_property_get_uint(o, PC_DIMM_NODE_PROP, &error_abort) : 0;
         trace_mhp_acpi_read_pxm(mem_st->selector, val);
         break;
     case 0x14: /* pack and return is_* fields */
@@ -234,14 +236,8 @@ static MemStatus *
 acpi_memory_slot_status(MemHotplugState *mem_st,
                         DeviceState *dev, Error **errp)
 {
-    Error *local_err = NULL;
     int slot = object_property_get_int(OBJECT(dev), PC_DIMM_SLOT_PROP,
-                                       &local_err);
-
-    if (local_err) {
-        error_propagate(errp, local_err);
-        return NULL;
-    }
+                                       &error_abort);
 
     if (slot >= mem_st->dev_count) {
         char *dev_path = object_get_canonical_path(OBJECT(dev));
