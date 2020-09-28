@@ -1550,8 +1550,9 @@ static int vfio_msix_setup(VFIOPCIDevice *vdev, int pos, Error **errp)
      * cannot be mapped because of a host page size bigger than the MSIX table
      * alignment.
      */
-    if (object_property_get_bool(OBJECT(qdev_get_machine()),
-                                 "vfio-no-msix-emulation", NULL)) {
+    if (object_property_find(qdev_get_machine(), "vfio-no-msix-emulation") &&
+        object_property_get_bool(qdev_get_machine(), "vfio-no-msix-emulation",
+                                 &error_abort)) {
         memory_region_set_enabled(&vdev->pdev.msix_table_mmio, false);
     }
 
