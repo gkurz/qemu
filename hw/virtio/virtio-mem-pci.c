@@ -51,7 +51,7 @@ static uint64_t virtio_mem_pci_get_plugged_size(const MemoryDeviceState *md,
                                                 Error **errp)
 {
     return object_property_get_uint(OBJECT(md), VIRTIO_MEM_SIZE_PROP,
-                                    errp);
+                                    &error_abort);
 }
 
 static void virtio_mem_pci_fill_device_info(const MemoryDeviceState *md,
