@@ -127,7 +127,8 @@ static void spapr_pci_collect_nvnpu(SpaprPhbPciNvGpuConfig *nvgpus,
     nvslot->links[j].atsd_gpa = nvgpus->nv2_atsd_current;
     nvgpus->nv2_atsd_current += memory_region_size(mr);
     nvslot->links[j].link_speed =
-        object_property_get_uint(OBJECT(pdev), "nvlink2-link-speed", NULL);
+        object_property_get_uint(OBJECT(pdev), "nvlink2-link-speed",
+                                 &error_abort);
 }
 
 static void spapr_phb_pci_collect_nvgpu(PCIBus *bus, PCIDevice *pdev,
@@ -135,22 +136,28 @@ static void spapr_phb_pci_collect_nvgpu(PCIBus *bus, PCIDevice *pdev,
 {
     PCIBus *sec_bus;
     Object *po = OBJECT(pdev);
-    uint64_t tgt = object_property_get_uint(po, "nvlink2-tgt", NULL);
 
-    if (tgt) {
+    if (object_property_find(po, "nvlink2-tgt")) {
         Error *local_err = NULL;
         SpaprPhbPciNvGpuConfig *nvgpus = opaque;
-        Object *mr_gpu = object_property_get_link(po, "nvlink2-mr[0]", NULL);
-        Object *mr_npu = object_property_get_link(po, "nvlink2-atsd-mr[0]",
-                                                  NULL);
+        uint64_t tgt = object_property_get_uint(po, "nvlink2-tgt",
+                                                &error_abort);
 
-        g_assert(mr_gpu || mr_npu);
-        if (mr_gpu) {
+        if (object_property_find(po,"nvlink2-mr[0]")) {
+            Object *mr_gpu =
+                object_property_get_link(po, "nvlink2-mr[0]", &error_abort);
+
             spapr_pci_collect_nvgpu(nvgpus, pdev, tgt, MEMORY_REGION(mr_gpu),
                                     &local_err);
-        } else {
+        } else if (object_property_find(po, "nvlink2-atsd-mr[0]")) {
+            Object *mr_npu =
+                object_property_get_link(po, "nvlink2-atsd-mr[0]",
+                                         &error_abort);
+
             spapr_pci_collect_nvnpu(nvgpus, pdev, tgt, MEMORY_REGION(mr_npu),
                                     &local_err);
+        } else {
+            g_assert_not_reached();
         }
         error_propagate(&nvgpus->err, local_err);
     }
@@ -200,12 +207,12 @@ void spapr_phb_nvgpu_setup(SpaprPhbState *sphb, Error **errp)
         if (!nvslot->gpdev) {
             continue;
         }
-        nvmrobj = object_property_get_link(OBJECT(nvslot->gpdev),
-                                           "nvlink2-mr[0]", NULL);
         /* ATSD is pointless without GPU RAM MR so skip those */
-        if (!nvmrobj) {
+        if (!object_property_find(OBJECT(nvslot->gpdev), "nvlink2-mr[0]")) {
             continue;
         }
+        nvmrobj = object_property_get_link(OBJECT(nvslot->gpdev),
+                                           "nvlink2-mr[0]", &error_abort);
 
         ++valid_gpu_num;
         memory_region_add_subregion(get_system_memory(), nvslot->gpa,
@@ -214,11 +221,13 @@ void spapr_phb_nvgpu_setup(SpaprPhbState *sphb, Error **errp)
         for (j = 0; j < nvslot->linknum; ++j) {
             Object *atsdmrobj;
 
-            atsdmrobj = object_property_get_link(OBJECT(nvslot->links[j].npdev),
-                                                 "nvlink2-atsd-mr[0]", NULL);
-            if (!atsdmrobj) {
+            if (!object_property_find(OBJECT(nvslot->links[j].npdev),
+                                      "nvlink2-atsd-mr[0]")) {
                 continue;
             }
+            atsdmrobj = object_property_get_link(OBJECT(nvslot->links[j].npdev),
+                                                 "nvlink2-atsd-mr[0]",
+                                                 &error_abort);
             memory_region_add_subregion(get_system_memory(),
                                         nvslot->links[j].atsd_gpa,
                                         MEMORY_REGION(atsdmrobj));
@@ -244,19 +253,24 @@ void spapr_phb_nvgpu_free(SpaprPhbState *sphb)
 
     for (i = 0; i < sphb->nvgpus->num; ++i) {
         SpaprPhbPciNvGpuSlot *nvslot = &sphb->nvgpus->slots[i];
-        Object *nv_mrobj = object_property_get_link(OBJECT(nvslot->gpdev),
-                                                    "nvlink2-mr[0]", NULL);
 
-        if (nv_mrobj) {
+        if (object_property_find(OBJECT(nvslot->gpdev), "nvlink2-mr[0]")) {
+            Object *nv_mrobj =
+                object_property_get_link(OBJECT(nvslot->gpdev),
+                                         "nvlink2-mr[0]", &error_abort);
+
             memory_region_del_subregion(get_system_memory(),
                                         MEMORY_REGION(nv_mrobj));
         }
         for (j = 0; j < nvslot->linknum; ++j) {
             PCIDevice *npdev = nvslot->links[j].npdev;
-            Object *atsd_mrobj;
-            atsd_mrobj = object_property_get_link(OBJECT(npdev),
-                                                  "nvlink2-atsd-mr[0]", NULL);
-            if (atsd_mrobj) {
+
+            if (object_property_find(OBJECT(npdev), "nvlink2-atsd-mr[0]")) {
+                Object *atsd_mrobj =
+                    object_property_get_link(OBJECT(npdev),
+                                             "nvlink2-atsd-mr[0]",
+                                             &error_abort);
+
                 memory_region_del_subregion(get_system_memory(),
                                             MEMORY_REGION(atsd_mrobj));
             }
@@ -359,7 +373,8 @@ void spapr_phb_nvgpu_ram_populate_dt(SpaprPhbState *sphb, void *fdt)
         Object *nv_mrobj = object_property_get_link(OBJECT(nvslot->gpdev),
                                                     "nvlink2-mr[0]",
                                                     &error_abort);
-        uint64_t size = object_property_get_uint(nv_mrobj, "size", NULL);
+        uint64_t size = object_property_get_uint(nv_mrobj, "size",
+                                                 &error_abort);
         uint64_t mem_reg[2] = { cpu_to_be64(nvslot->gpa), cpu_to_be64(size) };
         char *mem_name = g_strdup_printf("memory@%"PRIx64, nvslot->gpa);
         int off = fdt_add_subnode(fdt, 0, mem_name);

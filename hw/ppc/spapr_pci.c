@@ -1679,7 +1679,7 @@ static void spapr_pci_unplug_request(HotplugHandler *plug_handler,
             error_setg(errp, "PCI: Hot unplug of PCI bridges not supported");
             return;
         }
-        if (object_property_get_uint(OBJECT(pdev), "nvlink2-tgt", NULL)) {
+        if (object_property_find(OBJECT(pdev), "nvlink2-tgt")) {
             error_setg(errp, "PCI: Cannot unplug NVLink2 devices");
             return;
         }
