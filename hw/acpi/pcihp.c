@@ -53,14 +53,15 @@ typedef struct AcpiPciHpFind {
 
 static int acpi_pcihp_get_bsel(PCIBus *bus)
 {
-    Error *local_err = NULL;
-    uint64_t bsel = object_property_get_uint(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
-                                             &local_err);
+    uint64_t bsel;
 
-    if (local_err || bsel >= ACPI_PCIHP_MAX_HOTPLUG_BUS) {
-        if (local_err) {
-            error_free(local_err);
-        }
+    if (!object_property_find(OBJECT(bus), ACPI_PCIHP_PROP_BSEL)) {
+        return -1;
+    }
+
+    bsel = object_property_get_uint(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
+                                    &error_abort);
+    if (bsel >= ACPI_PCIHP_MAX_HOTPLUG_BUS) {
         return -1;
     } else {
         return bsel;
