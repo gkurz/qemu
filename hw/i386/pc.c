@@ -505,16 +505,14 @@ static int check_fdc(Object *obj, void *opaque)
     CheckFdcState *state = opaque;
     Object *fdc;
     uint32_t iobase;
-    Error *local_err = NULL;
 
     fdc = object_dynamic_cast(obj, TYPE_ISA_FDC);
     if (!fdc) {
         return 0;
     }
 
-    iobase = object_property_get_uint(obj, "iobase", &local_err);
-    if (local_err || iobase != 0x3f0) {
-        error_free(local_err);
+    iobase = object_property_get_uint(obj, "iobase", &error_abort);
+    if (iobase != 0x3f0) {
         return 0;
     }
 
