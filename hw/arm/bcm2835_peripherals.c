@@ -130,7 +130,6 @@ static void bcm2835_peripherals_realize(DeviceState *dev, Error **errp)
     BCM2835PeripheralState *s = BCM2835_PERIPHERALS(dev);
     Object *obj;
     MemoryRegion *ram;
-    Error *err = NULL;
     uint64_t ram_size, vcram_size;
     int n;
 
@@ -211,11 +210,8 @@ static void bcm2835_peripherals_realize(DeviceState *dev, Error **errp)
                                INTERRUPT_ARM_MAILBOX));
 
     /* Framebuffer */
-    vcram_size = object_property_get_uint(OBJECT(s), "vcram-size", &err);
-    if (err) {
-        error_propagate(errp, err);
-        return;
-    }
+    vcram_size = object_property_get_uint(OBJECT(s), "vcram-size",
+                                          &error_abort);
 
     if (!object_property_set_uint(OBJECT(&s->fb), "vcram-base",
                                   ram_size - vcram_size, errp)) {
