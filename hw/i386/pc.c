@@ -1148,7 +1148,7 @@ void pc_basic_device_init(struct PCMachineState *pcms,
              * IRQ8 and IRQ2.
              */
             uint8_t compat = object_property_get_uint(OBJECT(hpet),
-                    HPET_INTCAP, NULL);
+                    HPET_INTCAP, &error_abort);
             if (!compat) {
                 qdev_prop_set_uint32(hpet, HPET_INTCAP, hpet_irqs);
             }
