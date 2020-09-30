@@ -198,7 +198,6 @@ static void acpi_get_pm_info(MachineState *machine, AcpiPmInfo *pm)
     Object *piix = object_resolve_type_unambiguous(TYPE_PIIX4_PM);
     Object *lpc = object_resolve_type_unambiguous(TYPE_ICH9_LPC_DEVICE);
     Object *obj = piix ? piix : lpc;
-    QObject *o;
     pm->cpu_hp_io_base = 0;
     pm->pcihp_io_base = 0;
     pm->pcihp_io_len = 0;
@@ -234,28 +233,12 @@ static void acpi_get_pm_info(MachineState *machine, AcpiPmInfo *pm)
      * happens to be the same on PIIX (pc) and ICH9 (q35). */
     QEMU_BUILD_BUG_ON(ICH9_RST_CNT_IOPORT != PIIX_RCR_IOPORT);
 
-    /* Fill in optional s3/s4 related properties */
-    o = object_property_get_qobject(obj, ACPI_PM_PROP_S3_DISABLED, NULL);
-    if (o) {
-        pm->s3_disabled = qnum_get_uint(qobject_to(QNum, o));
-    } else {
-        pm->s3_disabled = false;
-    }
-    qobject_unref(o);
-    o = object_property_get_qobject(obj, ACPI_PM_PROP_S4_DISABLED, NULL);
-    if (o) {
-        pm->s4_disabled = qnum_get_uint(qobject_to(QNum, o));
-    } else {
-        pm->s4_disabled = false;
-    }
-    qobject_unref(o);
-    o = object_property_get_qobject(obj, ACPI_PM_PROP_S4_VAL, NULL);
-    if (o) {
-        pm->s4_val = qnum_get_uint(qobject_to(QNum, o));
-    } else {
-        pm->s4_val = false;
-    }
-    qobject_unref(o);
+    pm->s3_disabled = object_property_get_uint(obj, ACPI_PM_PROP_S3_DISABLED,
+                                               &error_abort);
+    pm->s4_disabled = object_property_get_uint(obj, ACPI_PM_PROP_S4_DISABLED,
+                                               &error_abort);
+    pm->s4_val = object_property_get_uint(obj, ACPI_PM_PROP_S4_VAL,
+                                          &error_abort);
 
     pm->pcihp_bridge_en =
         object_property_get_bool(obj, "acpi-pci-hotplug-with-bridge-support",
