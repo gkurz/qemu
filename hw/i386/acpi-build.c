@@ -240,12 +240,15 @@ static void acpi_get_pm_info(MachineState *machine, AcpiPmInfo *pm)
     pm->s4_val = object_property_get_uint(obj, ACPI_PM_PROP_S4_VAL,
                                           &error_abort);
 
+    /* The following properties don't exist in ICH9 */
     pm->pcihp_bridge_en =
+        !!object_property_find(obj, "acpi-pci-hotplug-with-bridge-support") &&
         object_property_get_bool(obj, "acpi-pci-hotplug-with-bridge-support",
-                                 NULL);
+                                 &error_abort);
     pm->pcihp_root_en =
+        !!object_property_find(obj, "acpi-root-pci-hotplug") &&
         object_property_get_bool(obj, "acpi-root-pci-hotplug",
-                                 NULL);
+                                 &error_abort);
 }
 
 static void acpi_get_misc_info(AcpiMiscInfo *info)
