@@ -776,8 +776,11 @@ static char *spapr_phb_vfio_get_loc_code(SpaprPhbState *sphb,  PCIDevice *pdev)
 {
     char *path = NULL, *buf = NULL, *host = NULL;
 
-    /* Get the PCI VFIO host id */
-    host = object_property_get_str(OBJECT(pdev), "host", NULL);
+    /*
+     * Get the PCI VFIO host id. It is always present for PCI VFIO devices,
+     * see vfio_pci_dev_properties[].
+     */
+    host = object_property_get_str(OBJECT(pdev), "host", &error_abort);
     if (!host) {
         goto err_out;
     }
