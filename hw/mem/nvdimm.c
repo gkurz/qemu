@@ -201,8 +201,8 @@ static void nvdimm_write_label_data(NVDIMMDevice *nvdimm, const void *buf,
 {
     MemoryRegion *mr;
     PCDIMMDevice *dimm = PC_DIMM(nvdimm);
-    bool is_pmem = object_property_get_bool(OBJECT(dimm->hostmem),
-                                            "pmem", NULL);
+    bool is_pmem = !!object_property_find(OBJECT(dimm->hostmem), "pmem") &&
+        object_property_get_bool(OBJECT(dimm->hostmem), "pmem", &error_abort);
     uint64_t backend_offset;
 
     nvdimm_validate_rw_label_data(nvdimm, size, offset);
