@@ -1800,7 +1800,8 @@ static void machvirt_init(MachineState *machine)
         numa_cpu_pre_plug(&possible_cpus->cpus[cs->cpu_index], DEVICE(cpuobj),
                           &error_fatal);
 
-        aarch64 &= object_property_get_bool(cpuobj, "aarch64", NULL);
+        aarch64 &= !!object_property_find(cpuobj, "aarch64") &&
+            object_property_get_bool(cpuobj, "aarch64", &error_abort);
 
         if (!vms->secure) {
             object_property_set_bool(cpuobj, "has_el3", false, NULL);
@@ -1888,7 +1889,8 @@ static void machvirt_init(MachineState *machine)
 
    if (!kvm_enabled()) {
         ARMCPU *cpu = ARM_CPU(first_cpu);
-        bool aarch64 = object_property_get_bool(OBJECT(cpu), "aarch64", NULL);
+        bool aarch64 = !!object_property_find(OBJECT(cpu), "aarch64") &&
+            object_property_get_bool(OBJECT(cpu), "aarch64", &error_abort);
 
         if (aarch64 && vms->highmem) {
             int requested_pa_size, pamax = arm_pamax(cpu);
