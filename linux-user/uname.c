@@ -19,6 +19,7 @@
 
 #include "qemu/osdep.h"
 
+#include "qapi/error.h"
 #include "qemu.h"
 //#include "qemu-common.h"
 #include "uname.h"
@@ -55,7 +56,7 @@ const char *cpu_to_uname_machine(void *cpu_env)
 #elif defined(TARGET_I386) && !defined(TARGET_X86_64)
     /* see arch/x86/kernel/cpu/bugs.c: check_bugs(), 386, 486, 586, 686 */
     CPUState *cpu = env_cpu((CPUX86State *)cpu_env);
-    int family = object_property_get_int(OBJECT(cpu), "family", NULL);
+    int family = object_property_get_int(OBJECT(cpu), "family", &error_abort);
     if (family == 4) {
         return "i486";
     }
