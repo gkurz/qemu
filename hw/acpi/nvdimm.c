@@ -227,7 +227,7 @@ nvdimm_build_structure_spa(GArray *structures, DeviceState *dev)
     uint64_t addr = object_property_get_uint(OBJECT(dev), PC_DIMM_ADDR_PROP,
                                              &error_abort);
     uint64_t size = object_property_get_uint(OBJECT(dev), PC_DIMM_SIZE_PROP,
-                                             NULL);
+                                             &error_abort);
     uint32_t node = object_property_get_uint(OBJECT(dev), PC_DIMM_NODE_PROP,
                                              &error_abort);
     int slot = object_property_get_int(OBJECT(dev), PC_DIMM_SLOT_PROP,
@@ -274,7 +274,7 @@ nvdimm_build_structure_memdev(GArray *structures, DeviceState *dev)
     NvdimmNfitMemDev *nfit_memdev;
     NVDIMMDevice *nvdimm = NVDIMM(OBJECT(dev));
     uint64_t size = object_property_get_uint(OBJECT(dev), PC_DIMM_SIZE_PROP,
-                                             NULL);
+                                             &error_abort);
     int slot = object_property_get_int(OBJECT(dev), PC_DIMM_SLOT_PROP,
                                        &error_abort);
     uint32_t handle = nvdimm_slot_to_handle(slot);
