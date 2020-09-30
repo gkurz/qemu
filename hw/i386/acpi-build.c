@@ -300,17 +300,17 @@ static void acpi_get_pci_holes(Range *hole, Range *hole64)
     range_set_bounds1(hole,
                       object_property_get_uint(pci_host,
                                                PCI_HOST_PROP_PCI_HOLE_START,
-                                               NULL),
+                                               &error_abort),
                       object_property_get_uint(pci_host,
                                                PCI_HOST_PROP_PCI_HOLE_END,
-                                               NULL));
+                                               &error_abort));
     range_set_bounds1(hole64,
                       object_property_get_uint(pci_host,
                                                PCI_HOST_PROP_PCI_HOLE64_START,
-                                               NULL),
+                                               &error_abort),
                       object_property_get_uint(pci_host,
                                                PCI_HOST_PROP_PCI_HOLE64_END,
-                                               NULL));
+                                               &error_abort));
 }
 
 static void acpi_align_size(GArray *blob, unsigned align)
