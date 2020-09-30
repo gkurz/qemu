@@ -2388,25 +2388,22 @@ struct AcpiBuildState {
 static bool acpi_get_mcfg(AcpiMcfgInfo *mcfg)
 {
     Object *pci_host;
-    QObject *o;
 
     pci_host = acpi_get_i386_pci_host();
     g_assert(pci_host);
 
-    o = object_property_get_qobject(pci_host, PCIE_HOST_MCFG_BASE, NULL);
-    if (!o) {
+    if (!object_property_find(pci_host, PCIE_HOST_MCFG_BASE)) {
         return false;
     }
-    mcfg->base = qnum_get_uint(qobject_to(QNum, o));
-    qobject_unref(o);
+
+    mcfg->base = object_property_get_uint(pci_host, PCIE_HOST_MCFG_BASE,
+                                          &error_abort);
     if (mcfg->base == PCIE_BASE_ADDR_UNMAPPED) {
         return false;
     }
 
-    o = object_property_get_qobject(pci_host, PCIE_HOST_MCFG_SIZE, NULL);
-    assert(o);
-    mcfg->size = qnum_get_uint(qobject_to(QNum, o));
-    qobject_unref(o);
+    mcfg->size = object_property_get_uint(pci_host, PCIE_HOST_MCFG_SIZE,
+                                          &error_abort);
     return true;
 }
 
