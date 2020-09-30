@@ -2,6 +2,7 @@
 
 #include "qemu/osdep.h"
 
+#include "qapi/error.h"
 #include "qemu.h"
 #include "disas/disas.h"
 #include "qemu/path.h"
@@ -92,7 +93,8 @@ enum {
 static const char *get_elf_platform(void)
 {
     static char elf_platform[] = "i386";
-    int family = object_property_get_int(OBJECT(thread_cpu), "family", NULL);
+    int family = object_property_get_int(OBJECT(thread_cpu), "family",
+                                         &error_abort);
     if (family > 6)
         family = 6;
     if (family >= 3)
