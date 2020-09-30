@@ -139,7 +139,8 @@ static void parse_numa_node(MachineState *ms, NumaNodeOptions *node,
         }
 
         object_ref(o);
-        numa_info[nodenr].node_mem = object_property_get_uint(o, "size", NULL);
+        numa_info[nodenr].node_mem =
+            object_property_get_uint(o, "size", &error_abort);
         numa_info[nodenr].node_memdev = MEMORY_BACKEND(o);
     }
 
