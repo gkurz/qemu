@@ -307,7 +307,9 @@ bool host_memory_backend_is_mapped(HostMemoryBackend *backend)
 size_t host_memory_backend_pagesize(HostMemoryBackend *memdev)
 {
     Object *obj = OBJECT(memdev);
-    char *path = object_property_get_str(obj, "mem-path", NULL);
+    char *path =
+        object_property_find(obj, "mem-path") ?
+        object_property_get_str(obj, "mem-path", &error_abort) : NULL;
     size_t pagesize = qemu_mempath_getpagesize(path);
 
     g_free(path);
