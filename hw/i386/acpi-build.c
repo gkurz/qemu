@@ -138,7 +138,8 @@ const struct AcpiGenericAddress x86_nvdimm_acpi_dsmio = {
 static void init_common_fadt_data(MachineState *ms, Object *o,
                                   AcpiFadtData *data)
 {
-    uint32_t io = object_property_get_uint(o, ACPI_PM_PROP_PM_IO_BASE, NULL);
+    uint32_t io =
+        object_property_get_uint(o, ACPI_PM_PROP_PM_IO_BASE, &error_abort);
     AmlAddressSpace as = AML_AS_SYSTEM_IO;
     AcpiFadtData fadt = {
         .rev = 3,
@@ -159,18 +160,23 @@ static void init_common_fadt_data(MachineState *ms, Object *o,
         .plvl2_lat = 0xfff /* C2 state not supported */,
         .plvl3_lat = 0xfff /* C3 state not supported */,
         .smi_cmd = ACPI_PORT_SMI_CMD,
-        .sci_int = object_property_get_uint(o, ACPI_PM_PROP_SCI_INT, NULL),
+        .sci_int = object_property_get_uint(o, ACPI_PM_PROP_SCI_INT,
+                                            &error_abort),
         .acpi_enable_cmd =
-            object_property_get_uint(o, ACPI_PM_PROP_ACPI_ENABLE_CMD, NULL),
+            object_property_get_uint(o, ACPI_PM_PROP_ACPI_ENABLE_CMD,
+                                     &error_abort),
         .acpi_disable_cmd =
-            object_property_get_uint(o, ACPI_PM_PROP_ACPI_DISABLE_CMD, NULL),
+            object_property_get_uint(o, ACPI_PM_PROP_ACPI_DISABLE_CMD,
+                                     &error_abort),
         .pm1a_evt = { .space_id = as, .bit_width = 4 * 8, .address = io },
         .pm1a_cnt = { .space_id = as, .bit_width = 2 * 8,
                       .address = io + 0x04 },
         .pm_tmr = { .space_id = as, .bit_width = 4 * 8, .address = io + 0x08 },
         .gpe0_blk = { .space_id = as, .bit_width =
-            object_property_get_uint(o, ACPI_PM_PROP_GPE0_BLK_LEN, NULL) * 8,
-            .address = object_property_get_uint(o, ACPI_PM_PROP_GPE0_BLK, NULL)
+            object_property_get_uint(o, ACPI_PM_PROP_GPE0_BLK_LEN,
+                                     &error_abort) * 8,
+            .address = object_property_get_uint(o, ACPI_PM_PROP_GPE0_BLK,
+                                                &error_abort)
         },
     };
     *data = fadt;
@@ -205,13 +211,15 @@ static void acpi_get_pm_info(MachineState *machine, AcpiPmInfo *pm)
         pm->fadt.rev = 1;
         pm->cpu_hp_io_base = PIIX4_CPU_HOTPLUG_IO_BASE;
         pm->pcihp_io_base =
-            object_property_get_uint(obj, ACPI_PCIHP_IO_BASE_PROP, NULL);
+            object_property_get_uint(obj, ACPI_PCIHP_IO_BASE_PROP,
+                                     &error_abort);
         pm->pcihp_io_len =
-            object_property_get_uint(obj, ACPI_PCIHP_IO_LEN_PROP, NULL);
+            object_property_get_uint(obj, ACPI_PCIHP_IO_LEN_PROP,
+                                     &error_abort);
     }
     if (lpc) {
         uint64_t smi_features = object_property_get_uint(lpc,
-            ICH9_LPC_SMI_NEGOTIATED_FEAT_PROP, NULL);
+            ICH9_LPC_SMI_NEGOTIATED_FEAT_PROP, &error_abort);
         struct AcpiGenericAddress r = { .space_id = AML_AS_SYSTEM_IO,
             .bit_width = 8, .address = ICH9_RST_CNT_IOPORT };
         pm->fadt.reset_reg = r;
