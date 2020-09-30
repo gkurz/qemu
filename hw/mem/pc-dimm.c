@@ -251,7 +251,7 @@ static void pc_dimm_md_fill_device_info(const MemoryDeviceState *md,
     di->slot = dimm->slot;
     di->node = dimm->node;
     di->size = object_property_get_uint(OBJECT(dimm), PC_DIMM_SIZE_PROP,
-                                        NULL);
+                                        &error_abort);
     di->memdev = object_get_canonical_path(OBJECT(dimm->hostmem));
 
     if (object_dynamic_cast(OBJECT(dev), TYPE_NVDIMM)) {
