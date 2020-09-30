@@ -416,10 +416,10 @@ static void pnv_dt_ipmi_bt(ISADevice *d, void *fdt, int lpc_off)
     char *name;
     int node;
 
-    io_base = object_property_get_int(OBJECT(d), "ioport", &error_fatal);
+    io_base = object_property_get_int(OBJECT(d), "ioport", &error_abort);
     io_regs[1] = cpu_to_be32(io_base);
 
-    irq = object_property_get_int(OBJECT(d), "irq", &error_fatal);
+    irq = object_property_get_int(OBJECT(d), "irq", &error_abort);
 
     name = g_strdup_printf("%s@i%x", qdev_fw_name(DEVICE(d)), io_base);
     node = fdt_add_subnode(fdt, lpc_off, name);
