@@ -176,11 +176,7 @@ static void npcm7xx_gcr_realize(DeviceState *dev, Error **errp)
     uint64_t dram_size;
     Object *obj;
 
-    obj = object_property_get_link(OBJECT(dev), "dram-mr", errp);
-    if (!obj) {
-        error_prepend(errp, "%s: required dram-mr link not found: ", __func__);
-        return;
-    }
+    obj = object_property_get_link(OBJECT(dev), "dram-mr", &error_abort);
     dram_size = memory_region_size(MEMORY_REGION(obj));
     if (!is_power_of_2(dram_size) ||
         dram_size < NPCM7XX_GCR_MIN_DRAM_SIZE ||
