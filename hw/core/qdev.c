@@ -540,10 +540,12 @@ qemu_irq qdev_get_gpio_out_connector(DeviceState *dev, const char *name, int n)
     g_autofree char *propname = g_strdup_printf("%s[%d]",
                                      name ? name : "unnamed-gpio-out", n);
 
-    qemu_irq ret = (qemu_irq)object_property_get_link(OBJECT(dev), propname,
-                                                      NULL);
+    if (!object_property_find(OBJECT(dev), propname)) {
+        return NULL;
+    }
 
-    return ret;
+    return (qemu_irq) object_property_get_link(OBJECT(dev), propname,
+                                               &error_abort);
 }
 
 /* disconnect a GPIO output, returning the disconnected input (if any) */
@@ -551,15 +553,20 @@ qemu_irq qdev_get_gpio_out_connector(DeviceState *dev, const char *name, int n)
 static qemu_irq qdev_disconnect_gpio_out_named(DeviceState *dev,
                                                const char *name, int n)
 {
-    char *propname = g_strdup_printf("%s[%d]",
+    g_autofree char *propname = g_strdup_printf("%s[%d]",
                                      name ? name : "unnamed-gpio-out", n);
 
-    qemu_irq ret = (qemu_irq)object_property_get_link(OBJECT(dev), propname,
-                                                      NULL);
+    qemu_irq ret;
+
+    if (!object_property_find(OBJECT(dev), propname)) {
+        return NULL;
+    }
+
+    ret = (qemu_irq) object_property_get_link(OBJECT(dev), propname,
+                                              &error_abort);
     if (ret) {
         object_property_set_link(OBJECT(dev), propname, NULL, NULL);
     }
-    g_free(propname);
     return ret;
 }
 
