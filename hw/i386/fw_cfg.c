@@ -13,6 +13,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qapi/error.h"
 #include "sysemu/numa.h"
 #include "hw/acpi/acpi.h"
 #include "hw/acpi/aml-build.h"
@@ -190,7 +191,8 @@ void fw_cfg_add_acpi_dsdt(Aml *scope, FWCfgState *fw_cfg)
      * DMA control register is located at FW_CFG_DMA_IO_BASE + 4
      */
     Object *obj = OBJECT(fw_cfg);
-    uint8_t io_size = object_property_get_bool(obj, "dma_enabled", NULL) ?
+    uint8_t io_size =
+        object_property_get_bool(obj, "dma_enabled", &error_abort) ?
         ROUND_UP(FW_CFG_CTL_SIZE, 4) + sizeof(dma_addr_t) :
         FW_CFG_CTL_SIZE;
     Aml *dev = aml_device("FWCF");
