@@ -131,7 +131,7 @@ static int spapr_dt_nvdimm(SpaprMachineState *spapr, void *fdt,
                                              &error_abort);
     uint64_t lsize = nvdimm->label_size;
     uint64_t size = object_property_get_int(OBJECT(nvdimm), PC_DIMM_SIZE_PROP,
-                                            NULL);
+                                            &error_abort);
 
     drc = spapr_drc_by_id(TYPE_SPAPR_DRC_PMEM, slot);
     g_assert(drc);
