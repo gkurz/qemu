@@ -344,13 +344,15 @@ static void build_append_pci_bus_devices(Aml *parent_scope, PCIBus *bus,
                                          bool pcihp_bridge_en)
 {
     Aml *dev, *notify_method = NULL, *method;
-    QObject *bsel;
+    bool bsel;
     PCIBus *sec;
     int i;
 
-    bsel = object_property_get_qobject(OBJECT(bus), ACPI_PCIHP_PROP_BSEL, NULL);
+    bsel = !!object_property_find(OBJECT(bus), ACPI_PCIHP_PROP_BSEL);
     if (bsel) {
-        uint64_t bsel_val = qnum_get_uint(qobject_to(QNum, bsel));
+        uint64_t bsel_val =
+            object_property_get_uint(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
+                                     &error_abort);
 
         aml_append(parent_scope, aml_name_decl("BSEL", aml_int(bsel_val)));
         notify_method = aml_method("DVNT", 2, AML_NOTSERIALIZED);
@@ -462,7 +464,9 @@ static void build_append_pci_bus_devices(Aml *parent_scope, PCIBus *bus,
     }
     /* If bus supports hotplug select it and notify about local events */
     if (bsel) {
-        uint64_t bsel_val = qnum_get_uint(qobject_to(QNum, bsel));
+        uint64_t bsel_val =
+            object_property_get_uint(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
+                                     &error_abort);
 
         aml_append(method, aml_store(aml_int(bsel_val), aml_name("BNUM")));
         aml_append(method,
@@ -489,7 +493,6 @@ static void build_append_pci_bus_devices(Aml *parent_scope, PCIBus *bus,
     if (bsel || pcihp_bridge_en) {
         aml_append(parent_scope, method);
     }
-    qobject_unref(bsel);
 }
 
 /**
