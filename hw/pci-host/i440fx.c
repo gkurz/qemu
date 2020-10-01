@@ -232,7 +232,8 @@ static void i440fx_realize(PCIDevice *dev, Error **errp)
 {
     dev->config[I440FX_SMRAM] = 0x02;
 
-    if (object_property_get_bool(qdev_get_machine(), "iommu", NULL)) {
+    if (object_property_find(qdev_get_machine(), "iommu") &&
+        object_property_get_bool(qdev_get_machine(), "iommu", &error_abort)) {
         warn_report("i440fx doesn't support emulated iommu");
     }
 }
