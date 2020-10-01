@@ -142,9 +142,10 @@ petalogix_ml605_init(MachineState *machine)
     object_property_add_child(qdev_get_machine(), "xilinx-dma", OBJECT(dma));
 
     ds = object_property_get_link(OBJECT(dma),
-                                  "axistream-connected-target", NULL);
+                                  "axistream-connected-target", &error_abort);
     cs = object_property_get_link(OBJECT(dma),
-                                  "axistream-control-connected-target", NULL);
+                                  "axistream-control-connected-target",
+                                  &error_abort);
     qdev_set_nic_properties(eth0, &nd_table[0]);
     qdev_prop_set_uint32(eth0, "rxmem", 0x1000);
     qdev_prop_set_uint32(eth0, "txmem", 0x1000);
@@ -157,9 +158,10 @@ petalogix_ml605_init(MachineState *machine)
     sysbus_connect_irq(SYS_BUS_DEVICE(eth0), 0, irq[AXIENET_IRQ]);
 
     ds = object_property_get_link(OBJECT(eth0),
-                                  "axistream-connected-target", NULL);
+                                  "axistream-connected-target", &error_abort);
     cs = object_property_get_link(OBJECT(eth0),
-                                  "axistream-control-connected-target", NULL);
+                                  "axistream-control-connected-target",
+                                  &error_abort);
     qdev_prop_set_uint32(dma, "freqhz", 100 * 1000000);
     object_property_set_link(OBJECT(dma), "axistream-connected", ds,
                              &error_abort);
