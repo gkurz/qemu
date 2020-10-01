@@ -576,7 +576,7 @@ static int pvrdma_check_ram_shared(Object *obj, void *opaque)
     bool *shared = opaque;
 
     if (object_dynamic_cast(obj, "memory-backend-ram")) {
-        *shared = object_property_get_bool(obj, "share", NULL);
+        *shared = object_property_get_bool(obj, "share", &error_abort);
     }
 
     return 0;
