@@ -1214,7 +1214,8 @@ static uint8_t chassis_from_bus(PCIBus *bus)
     } else {
         PCIDevice *bridge = pci_bridge_get_device(bus);
 
-        return object_property_get_uint(OBJECT(bridge), "chassis_nr",
+        return object_property_get_uint(OBJECT(bridge),
+                                        PCI_BRIDGE_DEV_PROP_CHASSIS_NR,
                                         &error_abort);
     }
 }
@@ -1488,9 +1489,10 @@ static void spapr_pci_bridge_plug(SpaprPhbState *phb,
 static int check_chassis_nr(Object *obj, void *opaque)
 {
     int new_chassis_nr =
-        object_property_get_uint(opaque, "chassis_nr", &error_abort);
+        object_property_get_uint(opaque, PCI_BRIDGE_DEV_PROP_CHASSIS_NR,
+                                 &error_abort);
     int chassis_nr =
-        object_property_get_uint(obj, "chassis_nr", NULL);
+        object_property_get_uint(obj, PCI_BRIDGE_DEV_PROP_CHASSIS_NR, NULL);
 
     if (!object_dynamic_cast(obj, TYPE_PCI_BRIDGE)) {
         return 0;
@@ -1512,7 +1514,7 @@ static int check_chassis_nr(Object *obj, void *opaque)
 static bool bridge_has_valid_chassis_nr(Object *bridge, Error **errp)
 {
     int chassis_nr =
-        object_property_get_uint(bridge, "chassis_nr", NULL);
+        object_property_get_uint(bridge, PCI_BRIDGE_DEV_PROP_CHASSIS_NR, NULL);
 
     /*
      * slotid_cap_init() already ensures that "chassis_nr" isn't null for
