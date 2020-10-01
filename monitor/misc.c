@@ -1819,7 +1819,8 @@ static int qdev_add_hotpluggable_device(Object *obj, void *opaque)
         return 0;
     }
 
-    if (dev->realized && object_property_get_bool(obj, "hotpluggable", NULL)) {
+    if (dev->realized && object_property_get_bool(obj, "hotpluggable",
+                                                  &error_abort)) {
         *list = g_slist_append(*list, dev);
     }
 
