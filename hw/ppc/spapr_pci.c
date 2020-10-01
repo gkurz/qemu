@@ -1491,15 +1491,10 @@ static int check_chassis_nr(Object *obj, void *opaque)
     int new_chassis_nr =
         object_property_get_uint(opaque, PCI_BRIDGE_DEV_PROP_CHASSIS_NR,
                                  &error_abort);
-    int chassis_nr =
-        object_property_get_uint(obj, PCI_BRIDGE_DEV_PROP_CHASSIS_NR, NULL);
-
-    if (!object_dynamic_cast(obj, TYPE_PCI_BRIDGE)) {
-        return 0;
-    }
+    int chassis_nr;
 
     /* Skip unsupported bridge types */
-    if (!chassis_nr) {
+    if (!object_dynamic_cast(obj, TYPE_PCI_BRIDGE)) {
         return 0;
     }
 
@@ -1508,24 +1503,31 @@ static int check_chassis_nr(Object *obj, void *opaque)
         return 0;
     }
 
+    chassis_nr = object_property_get_uint(obj, PCI_BRIDGE_DEV_PROP_CHASSIS_NR,
+                                          &error_abort);
+    g_assert(chassis_nr);
+
     return chassis_nr == new_chassis_nr;
 }
 
 static bool bridge_has_valid_chassis_nr(Object *bridge, Error **errp)
 {
-    int chassis_nr =
-        object_property_get_uint(bridge, PCI_BRIDGE_DEV_PROP_CHASSIS_NR, NULL);
+    int chassis_nr;
 
     /*
      * slotid_cap_init() already ensures that "chassis_nr" isn't null for
      * standard PCI bridges, so this really tells if "chassis_nr" is present
      * or not.
      */
-    if (!chassis_nr) {
+    if (!object_property_find(bridge, PCI_BRIDGE_DEV_PROP_CHASSIS_NR)) {
         error_setg(errp, "PCI Bridge lacks a \"chassis_nr\" property");
         error_append_hint(errp, "Try -device pci-bridge instead.\n");
         return false;
     }
+
+    chassis_nr =
+        object_property_get_uint(bridge, PCI_BRIDGE_DEV_PROP_CHASSIS_NR,
+                                 &error_abort);
 
     /* We want unique values for "chassis_nr" */
     if (object_child_foreach_recursive(object_get_root(), check_chassis_nr,
