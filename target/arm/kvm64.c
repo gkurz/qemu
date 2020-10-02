@@ -31,6 +31,7 @@
 #include "hw/acpi/acpi.h"
 #include "hw/acpi/ghes.h"
 #include "hw/arm/virt.h"
+#include "qapi/error.h"
 
 static bool have_guest_debug;
 
@@ -1348,8 +1349,8 @@ void kvm_arch_on_sigbus_vcpu(CPUState *c, int code, void *addr)
 
     assert(code == BUS_MCEERR_AR || code == BUS_MCEERR_AO);
 
-    if (acpi_enabled && addr &&
-            object_property_get_bool(obj, "ras", NULL)) {
+    if (acpi_enabled && addr && object_property_find(obj, "ras") &&
+            object_property_get_bool(obj, "ras", &error_abort)) {
         ram_addr = qemu_ram_addr_from_host(addr);
         if (ram_addr != RAM_ADDR_INVALID &&
             kvm_physical_memory_addr_from_host(c->kvm_state, addr, &paddr)) {
