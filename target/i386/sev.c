@@ -722,7 +722,7 @@ sev_guest_init(const char *id)
 
     sev->me_mask = ~(1UL << sev->cbitpos);
 
-    devname = object_property_get_str(OBJECT(sev), "sev-device", NULL);
+    devname = object_property_get_str(OBJECT(sev), "sev-device", &error_abort);
     sev->sev_fd = open(devname, O_RDWR);
     if (sev->sev_fd < 0) {
         error_report("%s: Failed to open %s '%s'", __func__,
