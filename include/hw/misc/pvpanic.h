@@ -16,6 +16,7 @@
 #define HW_MISC_PVPANIC_H
 
 #include "qom/object.h"
+#include "qapi/error.h"
 
 #define TYPE_PVPANIC "pvpanic"
 
@@ -27,7 +28,7 @@ static inline uint16_t pvpanic_port(void)
     if (!o) {
         return 0;
     }
-    return object_property_get_uint(o, PVPANIC_IOPORT_PROP, NULL);
+    return object_property_get_uint(o, PVPANIC_IOPORT_PROP, &error_abort);
 }
 
 #endif
