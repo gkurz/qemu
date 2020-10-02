@@ -735,8 +735,8 @@ static void qdev_class_add_legacy_property(DeviceClass *dc, Property *prop)
 {
     g_autofree char *name = NULL;
 
-    /* Register pointer properties as legacy properties */
-    if (!prop->info->print && prop->info->get) {
+    /* Register pointer and link properties as legacy properties */
+    if (!prop->info->print) {
         return;
     }
 
